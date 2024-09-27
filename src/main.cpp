@@ -45,6 +45,37 @@ void readDataFromFile( std::string filepath, PointCloud<double> &cloud )
 	std::cout << "Total num of points: " << cloud.pts.size() << "\n";
 }
 
+void readDataFromColmapFile(std::string filepath, PointCloud<double> &cloud) 
+{
+    cloud.pts.reserve(10000000);
+    cout << "Reading data..." << endl;
+
+    // Open the file
+    std::ifstream ptReader(filepath);
+    double x = 0, y = 0, z = 0;
+    int r = 0, g = 0, b = 0;
+    int point3D_ID;
+    double error;
+    string line;
+    
+    if (ptReader.is_open()) {
+        while (getline(ptReader, line)) {
+            // Skip lines starting with '#' (comments)
+            if (line[0] == '#') continue;
+
+            // Read the data from each line (POINT3D_ID X Y Z R G B ERROR)
+            std::istringstream iss(line);
+            iss >> point3D_ID >> x >> y >> z >> r >> g >> b >> error;
+
+            // Store the 3D points in the PointCloud structure
+            cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+        }
+        ptReader.close();
+    }
+
+    std::cout << "Total number of points: " << cloud.pts.size() << "\n";
+}
+
 void writeOutPlanes( string filePath, std::vector<PLANE> &planes, double scale )
 {
 	// write out bounding polygon result
@@ -156,12 +187,12 @@ void writeOutLinesObj(string filePath,
 
 int main() 
 {
-	string fileData = "D://Facade//data.txt";
-	string fileOut  = "D://Facade//data";
+	string fileData = "/dense/txt/points3D.txt";
+	string fileOut  = "/dense/txt/";
 
 	// read in data
 	PointCloud<double> pointData; 
-	readDataFromFile( fileData, pointData );
+	readDataFromColmapFile( fileData, pointData );
 
 	int k = 20;
 	LineDetection3D detector;
