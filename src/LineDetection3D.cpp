@@ -1,4 +1,4 @@
-﻿#include "LineDetection3D.h"
+#include "LineDetection3D.h"
 #include <omp.h>
 
 #include "CommonFunctions.h"
@@ -563,7 +563,8 @@ void LineDetection3D::lineFromMask( cv::Mat &mask, int thLineLengthPixel, std::v
 	
 	std::vector<std::vector<cv::Point> > contours;  
 	std::vector<cv::Vec4i> hierarchy;  
-	cv::findContours(mask2, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+	cv::findContours(mask2, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+
 
 	// B. line fitting from the contours
 	for ( int i=0; i<contours.size(); ++i )
