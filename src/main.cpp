@@ -1,6 +1,8 @@
-#include <stdio.h>
+#include <iostream>
 #include <fstream>
-
+#include <sstream>
+#include <string>
+#include <vector>
 #include "LineDetection3D.h"
 #include "nanoflann.hpp"
 #include "utils.h"
@@ -9,6 +11,56 @@
 using namespace cv;
 using namespace std;
 using namespace nanoflann;
+
+void readDataFromPLY(std::string filepath, PointCloud<double> &cloud) {
+    cloud.pts.reserve(10000000); // Reserve memory for points
+    std::ifstream plyFile(filepath);
+
+    if (!plyFile.is_open()) {
+        std::cerr << "Error opening PLY file: " << filepath << std::endl;
+        return;
+    }
+
+    std::string line;
+    bool headerEnded = false;
+    int vertexCount = 0;
+    int lineCount = 0;
+
+    // Read the header and find the number of vertices (points)
+    while (std::getline(plyFile, line)) {
+        if (line.substr(0, 14) == "element vertex") {
+            // Parse the number of vertices
+            std::istringstream iss(line);
+            std::string element, vertex;
+            iss >> element >> vertex >> vertexCount;
+        }
+        if (line == "end_header") {
+            headerEnded = true;
+            break;
+        }
+    }
+
+    if (!headerEnded) {
+        std::cerr << "Invalid PLY file: Header not found!" << std::endl;
+        return;
+    }
+
+    // Read the point data (x, y, z, intensity, r, g, b)
+    double x, y, z, intensity;
+    int r, g, b;
+    
+    while (lineCount < vertexCount && std::getline(plyFile, line)) {
+        std::istringstream iss(line);
+        if (iss >> x >> y >> z >> intensity >> r >> g >> b) {
+            // Store the point data in the PointCloud structure
+            cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+        }
+        lineCount++;
+    }
+
+    plyFile.close();
+    std::cout << "Total number of points: " << cloud.pts.size() << std::endl;
+}
 
 void readDataFromFile( std::string filepath, PointCloud<double> &cloud )
 {
@@ -185,24 +237,57 @@ void writeOutLinesObj(string filePath,
   file.close();
 }
 
-int main() 
+int main(int argc, char *argv[]) 
 {
-	string fileData = "/dense/txt/points3D.txt";
-	string fileOut  = "/dense/txt/";
+    // Check if proper arguments are passed
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0] << " <input_file> <output_directory> <input_format: txt/ply/colmap> <output_format: obj/txt>" << std::endl;
+        return 1;
+    }
 
-	// read in data
-	PointCloud<double> pointData; 
-	readDataFromColmapFile( fileData, pointData );
+    // Read command-line arguments
+    std::string fileData = argv[1];  // Input file path
+    std::string fileOut  = argv[2];  // Output directory path
+    std::string inputFormat = argv[3];  // Input format: txt/ply/colmap
+    std::string outputFormat = argv[4]; // Output format: obj/txt
 
-	int k = 20;
-	LineDetection3D detector;
-	std::vector<PLANE> planes;
-	std::vector<std::vector<cv::Point3d> > lines;
-	std::vector<double> ts;
-	detector.run( pointData, k, planes, lines, ts );
-	cout<<"lines number: "<<lines.size()<<endl;
-	cout<<"planes number: "<<planes.size()<<endl;
-	
-	writeOutPlanesObj( fileOut, planes, detector.scale );
-	writeOutLinesObj( fileOut, lines, detector.scale );
+    // Read in data
+    PointCloud<double> pointData;
+
+    // Choose input format
+    if (inputFormat == "txt") {
+        readDataFromFile(fileData, pointData);  // Read .txt data
+    } else if (inputFormat == "ply") {
+        readDataFromPLY(fileData, pointData);   // Read .ply data
+    } else if (inputFormat == "colmap") {
+        readDataFromColmapFile(fileData, pointData);  // Read .colmap data
+    } else {
+        std::cerr << "Invalid input format: " << inputFormat << ". Choose from txt/ply/colmap." << std::endl;
+        return 1;
+    }
+
+    // Process the data
+    int k = 20;
+    LineDetection3D detector;
+    std::vector<PLANE> planes;
+    std::vector<std::vector<cv::Point3d>> lines;
+    std::vector<double> ts;
+    detector.run(pointData, k, planes, lines, ts);
+    
+    std::cout << "Lines number: " << lines.size() << std::endl;
+    std::cout << "Planes number: " << planes.size() << std::endl;
+
+    // Choose output format
+    if (outputFormat == "obj") {
+        writeOutPlanesObj(fileOut, planes, detector.scale);  // Write planes in .obj format
+        writeOutLinesObj(fileOut, lines, detector.scale);    // Write lines in .obj format
+    } else if (outputFormat == "txt") {
+        writeOutPlanes(fileOut, planes, detector.scale);     // Write planes in .txt format
+        writeOutLines(fileOut, lines, detector.scale);       // Write lines in .txt format
+    } else {
+        std::cerr << "Invalid output format: " << outputFormat << ". Choose from obj/txt." << std::endl;
+        return 1;
+    }
+
+    return 0;
 }
