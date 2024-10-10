@@ -1,6 +1,20 @@
 # 3DLineDetection
 A simple and efficient 3D line detection algorithm for large scale unorganized point cloud. A conference paper based on this code can be found here https://arxiv.org/abs/1901.02532
 
+## How to use:
+**support to 3 kinds of input point cloud: txt/ply/colmap-ply and 2 kinds of output: obj/txt**
+
+```bash
+# Example usage for PLY input and OBJ output
+./src/LineFromPointCloud input.ply output_directory/ ply obj
+
+# Example usage for TXT input and TXT output
+./src/LineFromPointCloud input.txt output_directory/ txt txt
+
+# Example usage for Colmap input and OBJ output
+./src/LineFromPointCloud input_colmap.txt output_directory/ colmap obj
+```
+
 Prerequisites:
 ---
 1. OpenCV > 2.4.x
