@@ -13,7 +13,7 @@ using namespace std;
 using namespace nanoflann;
 
 void readDataFromPLY(std::string filepath, PointCloud<double> &cloud) {
-    cloud.pts.reserve(10000000); // Reserve memory for points
+    cloud.pts.reserve(10000000);  // 预留点的内存
     std::ifstream plyFile(filepath);
 
     if (!plyFile.is_open()) {
@@ -25,14 +25,21 @@ void readDataFromPLY(std::string filepath, PointCloud<double> &cloud) {
     bool headerEnded = false;
     int vertexCount = 0;
     int lineCount = 0;
+    bool hasColor = false, hasIntensity = false;
 
-    // Read the header and find the number of vertices (points)
+    // 读取头文件并查找顶点数量及是否包含颜色或强度信息
     while (std::getline(plyFile, line)) {
         if (line.substr(0, 14) == "element vertex") {
-            // Parse the number of vertices
+            // 解析顶点数量
             std::istringstream iss(line);
             std::string element, vertex;
             iss >> element >> vertex >> vertexCount;
+        }
+        if (line == "property float scalar_intensity") {
+            hasIntensity = true;
+        }
+        if (line == "property uchar red" || line == "property uchar green" || line == "property uchar blue") {
+            hasColor = true;
         }
         if (line == "end_header") {
             headerEnded = true;
@@ -45,15 +52,30 @@ void readDataFromPLY(std::string filepath, PointCloud<double> &cloud) {
         return;
     }
 
-    // Read the point data (x, y, z, intensity, r, g, b)
-    double x, y, z, intensity;
-    int r, g, b;
+    // 读取点数据 (x, y, z, 可能包含 intensity 和 r, g, b)
+    double x, y, z, intensity = 0.0;
+    int r = 0, g = 0, b = 0;
     
     while (lineCount < vertexCount && std::getline(plyFile, line)) {
         std::istringstream iss(line);
-        if (iss >> x >> y >> z >> intensity >> r >> g >> b) {
-            // Store the point data in the PointCloud structure
-            cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+
+        // 按是否包含 intensity 和 color 读取数据
+        if (hasIntensity && hasColor) {
+            if (iss >> x >> y >> z >> intensity >> r >> g >> b) {
+                cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+            }
+        } else if (hasIntensity) {
+            if (iss >> x >> y >> z >> intensity) {
+                cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+            }
+        } else if (hasColor) {
+            if (iss >> x >> y >> z >> r >> g >> b) {
+                cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+            }
+        } else {
+            if (iss >> x >> y >> z) {
+                cloud.pts.push_back(PointCloud<double>::PtData(x, y, z));
+            }
         }
         lineCount++;
     }
@@ -237,11 +259,31 @@ void writeOutLinesObj(string filePath,
   file.close();
 }
 
+void writeOut3DLinesTxt(string filePath, std::vector<std::vector<cv::Point3d>> &lines) {
+    // Save the output as line_3d.txt
+    string fileEdgePoints = filePath + "line_3d.txt";
+    std::ofstream file(fileEdgePoints);
+
+    if (!file.is_open()) {
+        std::cerr << "Error opening file for writing: " << fileEdgePoints << std::endl;
+        return;
+    }
+
+    // Write the lines in the format x1 y1 z1 x2 y2 z2
+    for (const auto& line : lines) {
+        file << line[0].x << " " << line[0].y << " " << line[0].z << " "
+             << line[1].x << " " << line[1].y << " " << line[1].z << std::endl;
+    }
+
+    file.close();
+    std::cout << "Lines saved to " << fileEdgePoints << std::endl;
+}
+
 int main(int argc, char *argv[]) 
 {
     // Check if proper arguments are passed
     if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " <input_file> <output_directory> <input_format: txt/ply/colmap> <output_format: obj/txt>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <input_file> <output_directory> <input_format: txt/ply/colmap> <output_format: obj/txt/txt_3d>" << std::endl;
         return 1;
     }
 
@@ -284,8 +326,16 @@ int main(int argc, char *argv[])
     } else if (outputFormat == "txt") {
         writeOutPlanes(fileOut, planes, detector.scale);     // Write planes in .txt format
         writeOutLines(fileOut, lines, detector.scale);       // Write lines in .txt format
+    } else if (outputFormat == "txt_3d") {
+        writeOut3DLinesTxt(fileOut, lines);       // Write lines in .txt format
+    } else if (outputFormat == "all") {
+        writeOutPlanesObj(fileOut, planes, detector.scale);  // Write planes in .obj format
+        writeOutLinesObj(fileOut, lines, detector.scale);    // Write lines in .obj format
+        writeOutPlanes(fileOut, planes, detector.scale);     // Write planes in .txt format
+        writeOutLines(fileOut, lines, detector.scale);       // Write lines in .txt format
+	writeOut3DLinesTxt(fileOut, lines);       // Write lines in .txt format
     } else {
-        std::cerr << "Invalid output format: " << outputFormat << ". Choose from obj/txt." << std::endl;
+        std::cerr << "Invalid output format: " << outputFormat << ". Choose from obj/txt/txt_3d." << std::endl;
         return 1;
     }
 
