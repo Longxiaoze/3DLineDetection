@@ -4,7 +4,7 @@ A simple and efficient 3D line detection algorithm for large scale unorganized p
 ## How to use:
 **support to 3 kinds of input point cloud: txt/ply/colmap-ply and 2 kinds of output: obj/txt**
 
-`./src/LineFromPointCloud <input_file> <output_directory> <input_format: txt/ply/colmap> <output_format: obj/txt/txt_3d>`
+`./src/LineFromPointCloud <input_file> <output_directory> <input_format: txt/ply/colmap> <output_format: obj/txt/txt_3d/all>`
 
 ```bash
 # Example usage for PLY input and OBJ output
