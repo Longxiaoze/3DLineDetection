@@ -18,6 +18,7 @@ A simple and efficient 3D line detection algorithm for large scale unorganized p
 ```
 
 if you are using meshlab to process ply, please save `color` and do not choose `binary encoding` .
+
 Prerequisites:
 ---
 1. OpenCV > 2.4.x
